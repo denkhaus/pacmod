@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gopkg.in/src-d/go-git.v4"
 )
 
 // Module packs the module at the given path and version then
@@ -25,7 +27,12 @@ func Module(path string, version string, outputDirectory string) error {
 		return fmt.Errorf("could not create zip archive: %w", err)
 	}
 
-	if err := createInfoFile(version, outputDirectory); err != nil {
+	dt, err := getCommitTimestamp(path)
+	if err != nil {
+		return fmt.Errorf("could not get commit timestamp: %w", err)
+	}
+
+	if err := createInfoFile(version, outputDirectory, dt); err != nil {
 		return fmt.Errorf("could not create info file: %w", err)
 	}
 
@@ -34,6 +41,29 @@ func Module(path string, version string, outputDirectory string) error {
 	}
 
 	return nil
+}
+
+func getCommitTimestamp(path string) (time.Time, error) {
+	var dt time.Time
+
+	r, err := git.PlainOpen(path)
+	if err != nil {
+		return dt, fmt.Errorf("could not open git repository: %w", err)
+	}
+
+	head, err := r.Head()
+	if err != nil {
+		return dt, fmt.Errorf("could not get head revision: %w", err)
+	}
+
+	hash := head.Hash()
+
+	commit, err := r.CommitObject(hash)
+	if err != nil {
+		return dt, fmt.Errorf("could not get head commit object: %w", err)
+	}
+
+	return commit.Author.When.UTC(), nil
 }
 
 func getModuleName(path string) (string, error) {
@@ -61,7 +91,7 @@ func createZipArchive(path string, moduleName string, version string, outputDire
 		return fmt.Errorf("unable to get files to archive: %w", err)
 	}
 
-	outputPath := filepath.Join(outputDirectory, version+".zip")
+	outputPath := filepath.Join(outputDirectory, "source.zip")
 	zipFile, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("unable to create zip file: %w", err)
@@ -127,7 +157,7 @@ func getZipPath(path string, currentFilePath string, moduleName string, version 
 	return filepath.Join(fmt.Sprintf("%s@%s", moduleName, version), filePath)
 }
 
-func createInfoFile(version string, outputDirectory string) error {
+func createInfoFile(version string, outputDirectory string, commitTimestamp time.Time) error {
 	infoFilePath := filepath.Join(outputDirectory, version+".info")
 	file, err := os.Create(infoFilePath)
 	if err != nil {
@@ -140,7 +170,7 @@ func createInfoFile(version string, outputDirectory string) error {
 		Time    string
 	}
 
-	currentTime := getInfoFileFormattedTime(time.Now())
+	currentTime := getInfoFileFormattedTime(commitTimestamp)
 	info := infoFile{
 		Version: version,
 		Time:    currentTime,

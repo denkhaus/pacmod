@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/plexsystems/pacmod/internal/commands"
+	"github.com/denkhaus/pacmod/internal/commands"
 )
 
 func main() {

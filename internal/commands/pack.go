@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/plexsystems/pacmod/pack"
+	"github.com/denkhaus/pacmod/pack"
 	"github.com/spf13/cobra"
 )
 
